@@ -3,7 +3,6 @@ import pika
 connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
 channel = connection.channel()
 
-channel.queue_declare(queue='external_mvd')
 
 result = channel.queue_declare(exclusive=True)
 queue_name = result.method.queue
@@ -14,6 +13,10 @@ channel.queue_bind(exchange='fanout_internal_external',
 print(' [*] Waiting for a request from mvd')
 
 def callback(ch, method, props, body):
+    """
+    принимаем собщение от мвд,
+    отправляем ответ обратно мвд
+    """
     print(body.decode())
     ch.basic_publish(exchange='',
                      routing_key='external_mvd',

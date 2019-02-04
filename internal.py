@@ -3,17 +3,20 @@ import pika
 connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
 channel = connection.channel()
 
-# channel.queue_declare(queue='internal_mvd')
 
-result = channel.queue_declare(exclusive=True)
+result = channel.queue_declare(exclusive=True) # создаем очередь для приема сообщений от мвд
 queue_name = result.method.queue
 
 channel.queue_bind(exchange='fanout_internal_external',
-                   queue=queue_name)
+                   queue=queue_name) # создаем binding между точкой доступа fanout и очередью для приема сообщений от мвд
 
 print(' [*] Waiting for a request from mvd')
 
 def callback(ch, method, props, body):
+    """
+    принимаем собщение от мвд,
+    отправляем ответ обратно мвд
+    """
     print(body.decode())
     ch.basic_publish(exchange='',
                      routing_key='internal_mvd',
