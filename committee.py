@@ -68,7 +68,7 @@ def social_request(ch, method, props, body):
     отправляем предварительный ок человеку
     """
     print(body.decode())
-    response = "Pre-OK"
+    response = "Pre-OK. You need to pass exam and pay fee"
 
     ch.basic_publish(exchange='',
                      routing_key=props.reply_to,
