@@ -3,11 +3,11 @@ import pika
 connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
 channel = connection.channel()
 
-channel.queue_declare(queue='exams_center')
+channel.queue_declare(queue='exams_center') # создаем очередь для отправки запросов для сдачи экзаменов
 
 def callback(ch, method, props, body):
     """
-    callback-функция для приема запрсов от людей,
+    callback-функция для приема запрсов для сдачи экзаменов от людей,
     отправляем ответ о том, что человек сдал экзамены
     """
     print(body.decode())

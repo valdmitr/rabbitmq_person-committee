@@ -52,9 +52,10 @@ def internal_request(ch, method, props, body):
     response = "Internal ok {}".format(body.decode())
     print(response)
 
-    internal_dict = {'body': body.decode()}
-    internal_dict['correlation_id'] = props.correlation_id
-    internal_dict['reply_to'] = props.reply_to
+    internal_dict = {'body': body.decode(),
+                     'correlation_id': props.correlation_id,
+                     'reply_to': props.reply_to}
+
     print(internal_dict)
     # with open("{}_in.json".format(props.correlation_id), "w") as write_file:
     with open("in.json", "w") as write_file:
@@ -72,9 +73,10 @@ def external_request(ch, method, props, body):
     response = "External ok {}".format(body.decode())
     print(response)
 
-    external_dict = {'body': body.decode()}
-    external_dict['correlation_id'] = props.correlation_id
-    external_dict['reply_to'] = props.reply_to
+    external_dict = {'body': body.decode(),
+                     'correlation_id': props.correlation_id,
+                     'reply_to': props.reply_to}
+
     print(external_dict)
     with open("ex.json", "w") as write_file:
         json.dump(external_dict, write_file)
@@ -91,21 +93,10 @@ def exist_file_in_out(ch):
     :param ch: канал, который передаем от callback-функции
     """
     if os.path.isfile('./in.json') and os.path.isfile('./ex.json'):
-        # with open("in.json", "r") as read_file:
-        #     data_to_publish = json.load(read_file)
-        #     body_to_publish = "Ok from internal and external {}".format(data_to_publish['body'])
-        #     ch.basic_publish(exchange='',
-        #                      routing_key='from_mid_mvd',
-        #                      properties=pika.BasicProperties(correlation_id=
-        #                                                      data_to_publish['correlation_id'],
-        #                                                      reply_to=data_to_publish['reply_to']),
-        #                      body=body_to_publish)
         os.rename('./in.json', './response_from_mvd.json')
         ch.basic_publish(exchange='',
                          routing_key='from_mid_mvd',
                          body="response_from_mvd.json")
-
-        # os.remove('./in.json')
         os.remove('./ex.json')
 
 
