@@ -2,14 +2,19 @@ import pika
 import uuid
 import json
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(
+    host='localhost'))
 channel = connection.channel()
 
-channel.queue_declare(queue='bank') # создаем очередь для отправки запросов на оплату пошлины
+# создаем очередь для отправки запросов на оплату пошлины
+channel.queue_declare(queue='bank')
 
-channel.exchange_declare(exchange='direct_bank', exchange_type='direct') #создаем точку обмена для отправки сообщений клиенту и в комитет
+# создаем точку обмена для отправки сообщений клиенту и в комитет
+channel.exchange_declare(exchange='direct_bank', exchange_type='direct')
 
+# routing key для отправки сообщений клиенту и комитету
 routing_key = 'bank_person_committee'
+
 
 def callback(ch, method, props, body):
     """
@@ -26,20 +31,14 @@ def callback(ch, method, props, body):
         transaction_id = str(uuid.uuid4())
         ch.basic_publish(exchange='direct_bank',
                          routing_key=routing_key,
-                         properties=pika.BasicProperties(correlation_id=
-                                                         props.correlation_id),
+                         properties=pika.BasicProperties(
+                             correlation_id=props.correlation_id),
                          body=transaction_id)
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
-
-
-
-
-
 print('[*] Waiting for fee from person')
 
 channel.basic_consume(callback, queue='bank')
-
 channel.start_consuming()

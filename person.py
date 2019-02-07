@@ -3,8 +3,11 @@ import uuid
 import json
 import os
 
-class PersonRpcClient():
 
+class PersonRpcClient:
+    """
+    класс, в котором прописываем rpc-клиента
+    """
 
     def __init__(self):
         """
@@ -18,36 +21,45 @@ class PersonRpcClient():
 
         self.channel = self.connection.channel()
 
-        self.binding_key = 'bank_person_committee'  # binding key для приема сообщений от банка
+        # binding key для приема сообщений от банка
+        self.binding_key = 'bank_person_committee'
 
+        # очередь для приема ответов от комитета
         result = self.channel.queue_declare(exclusive=True)
-        self.callback_queue = result.method.queue # очередь для приема ответов от комитета
+        self.callback_queue = result.method.queue
 
+        # очередь для приема ответов от exams
         result_exams = self.channel.queue_declare(exclusive=True)
-        self.callback_queue_exams = result_exams.method.queue # очередь для приема ответов от exams
+        self.callback_queue_exams = result_exams.method.queue
 
+        # очередь для приема ответов от банка
         result_bank = self.channel.queue_declare(exclusive=True)
-        self.callback_queue_bank = result_bank.method.queue # очередь для приема ответов от банка
+        self.callback_queue_bank = result_bank.method.queue
 
+        # очередь для приема итогового ответа от комитета
         final_result = self.channel.queue_declare(exclusive=True)
-        self.callback_queue_final_result = final_result.method.queue  # очередь для приема итогового ответа от комитета
+        self.callback_queue_final_result = final_result.method.queue
 
+        # bind от точки обмена банка до очереди приема ответов от банка
         self.channel.queue_bind(exchange='direct_bank',
-                           queue=self.callback_queue_bank,
-                           routing_key=self.binding_key)  # bind от точки обмена банка до очереди приема ответов от банка
+                                queue=self.callback_queue_bank,
+                                routing_key=self.binding_key)
 
-
+        # принимаем предварительный ок от комитета
         self.channel.basic_consume(self.waiting_ok, no_ack=True,
-                                   queue=self.callback_queue)  # принимаем предварительный ок от комитета
+                                   queue=self.callback_queue)
 
+        # принимаем результаты экзаменов
         self.channel.basic_consume(self.passed_exams,
-                                   queue=self.callback_queue_exams) # принимаем результаты экзаменов
+                                   queue=self.callback_queue_exams)
 
+        # принимаем код транзакции от банка
         self.channel.basic_consume(self.bank_request,
-                              queue=self.callback_queue_bank)  # принимаем код транзакции от банка
+                                   queue=self.callback_queue_bank)
 
+        # принимаем итоговый ок от комитета
         self.channel.basic_consume(self.final_ok, no_ack=True,
-                                   queue=self.callback_queue_final_result) # принимаем итоговый ок от комитета
+                                   queue=self.callback_queue_final_result)
 
 
     def waiting_ok(self, ch, method, props, body):
@@ -58,17 +70,15 @@ class PersonRpcClient():
         """
         request_exams = "I want to pass exams."
 
-
         if self.person_id == props.correlation_id:
             self.response = body
 
             ch.basic_publish(exchange='',
-                                   routing_key='exams_center',
-                                   properties=pika.BasicProperties(
-                                       reply_to=self.callback_queue_exams,
-                                       correlation_id=props.correlation_id),
-                                   body = request_exams)
-
+                             routing_key='exams_center',
+                             properties=pika.BasicProperties(
+                                 reply_to=self.callback_queue_exams,
+                                 correlation_id=props.correlation_id),
+                             body=request_exams)
 
 
     def passed_exams(self, ch, method, props, body):
@@ -97,7 +107,6 @@ class PersonRpcClient():
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
-
     def bank_request(self, ch, method, props, body):
         """
         callback-функция для приема ответов от банка,
@@ -122,7 +131,8 @@ class PersonRpcClient():
         после чего удаляем созданные файлы
         :param ch: канал, который передаем от callback-функции
         """
-        if os.path.isfile('./resp_exams.json') and os.path.isfile('./resp_bank.json'):
+        if os.path.isfile('./resp_exams.json') and \
+                os.path.isfile('./resp_bank.json'):
             with open("resp_bank.json", "r") as read_file:
                 data_to_publish = json.load(read_file)
                 ch.basic_publish(exchange='',
@@ -150,9 +160,9 @@ class PersonRpcClient():
         :return: ответ на запрос
         """
         my_message = "{} {}".format("person", message)
-        self.response = None
-        self.response_from_exams = None
-        self.response_from_bank = None
+        # self.response = None
+        # self.response_from_exams = None
+        # self.response_from_bank = None
         self.final_response = None
         self.person_id = str(uuid.uuid4())
         self.channel.basic_publish(exchange='',
@@ -160,7 +170,7 @@ class PersonRpcClient():
                                    properties=pika.BasicProperties(
                                        reply_to=self.callback_queue,
                                        correlation_id=self.person_id),
-                                   body = my_message)
+                                   body=my_message)
         """
         слушаем очереди, пока ловим self.response_from_exams, 
         self.response и self.response_from_bank. Когда поймали 
@@ -169,23 +179,29 @@ class PersonRpcClient():
         self.response_from_bank.
         
         """
-        while self.response is None:
-            while self.response_from_exams is None:
-                while self.response_from_bank is None:
-                    while self.final_response is None:
-                        self.connection.process_data_events()
-                    print(self.response.decode())
-                    print("I want to pass exams.")
-                print (self.response_from_exams.decode())
-            print(self.response_from_bank)
+        # while self.response is None:
+        #     while self.response_from_exams is None:
+        #         while self.response_from_bank is None:
+        #             while self.final_response is None:
+        #                 self.connection.process_data_events()
+        #             print(self.response.decode())
+        #             print("I want to pass exams.")
+        #         print (self.response_from_exams.decode())
+        #     print(self.response_from_bank)
+        # return self.final_response
+
+        while self.final_response is None:
+            self.connection.process_data_events()
+        print(self.response.decode())
+        print("I want to pass exams.")
+        print (self.response_from_exams.decode())
+        print(self.response_from_bank)
         return self.final_response
-
-
 
 
 person = PersonRpcClient()
 
 print('[x] I want to get a residence permit')
 response = person.call('I want to get a residence permit')
-print (response.decode())
+print(response.decode())
 # print (response)

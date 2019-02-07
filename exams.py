@@ -1,9 +1,12 @@
 import pika
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+connection = pika.BlockingConnection(pika.ConnectionParameters(
+    host='localhost'))
 channel = connection.channel()
 
-channel.queue_declare(queue='exams_center') # создаем очередь для отправки запросов для сдачи экзаменов
+# создаем очередь для отправки запросов для сдачи экзаменов
+channel.queue_declare(queue='exams_center')
+
 
 def callback(ch, method, props, body):
     """
@@ -15,7 +18,8 @@ def callback(ch, method, props, body):
 
     ch.basic_publish(exchange='',
                      routing_key=props.reply_to,
-                     properties=pika.BasicProperties(correlation_id=props.correlation_id),
+                     properties=pika.BasicProperties(
+                         correlation_id=props.correlation_id),
                      body=response)
     ch.basic_ack(delivery_tag=method.delivery_tag)
 

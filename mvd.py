@@ -9,38 +9,44 @@ connection = pika.BlockingConnection(pika.ConnectionParameters(
 
 channel = connection.channel()
 
-channel.queue_declare(queue='internal_mvd') # создаем очередь для приема сообщений от внутренней базы
-channel.queue_declare(queue='external_mvd') # создаем очередь для приема сообщений от внешней базы
+# создаем очередь для приема сообщений от внутренней базы
+channel.queue_declare(queue='internal_mvd')
 
+# создаем очередь для приема сообщений от внешней базы
+channel.queue_declare(queue='external_mvd')
+
+# создаем точку доступа для отправки сообщений
+# одновременно во внутреннюю и во внешние базы
 channel.exchange_declare(exchange='fanout_internal_external',
-                         exchange_type='fanout') # создаем точку доступа для отправки сообщений одновременно во внутреннюю и во внешние базы
+                         exchange_type='fanout')
 
-result = channel.queue_declare(exclusive=True) # создаем очередь для приема сообщений от комитета
+# создаем очередь для приема сообщений от комитета
+result = channel.queue_declare(exclusive=True)
 queue_name = result.method.queue
 
-
+# binding key для приема сообщений от комитета
 binding_key = 'committee_mid_mvd'
 
+# создаем binding между точкой доступа direct_mid
+# и очередью для приема сообщений от комитета
 channel.queue_bind(exchange='direct_mid',
                    queue=queue_name,
-                   routing_key=binding_key) # создаем binding между точкой доступа direct_mid и очередью для приема сообщений от комитета
-
-print('[*] Waiting for a request from the Committee')
+                   routing_key=binding_key)
 
 
 def callback(ch, method, props, body):
     """
-    принимаем сообщения от комитета,
-    отправляем запрос одновременно во внутреннюю и во внешнюю базу
+    принимаем сообщения от комитета, отправляем запрос
+    одновременно во внутреннюю и во внешнюю базу
     """
     response = "{} {}".format("mvd", body.decode())
     print(response)
     ch.basic_publish(exchange='fanout_internal_external',
-                          routing_key='',
-                          properties=pika.BasicProperties(correlation_id=
-                                                     props.correlation_id,
-                                                     reply_to=props.reply_to),
-                          body=body.decode())
+                     routing_key='',
+                     properties=pika.BasicProperties(
+                         correlation_id=props.correlation_id,
+                         reply_to=props.reply_to),
+                     body=body.decode())
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
@@ -55,8 +61,9 @@ def internal_request(ch, method, props, body):
     internal_dict = {'body': body.decode(),
                      'correlation_id': props.correlation_id,
                      'reply_to': props.reply_to}
-
     print(internal_dict)
+
+    # записываем в файл данные, которые пришли от внутренней базы мвд
     # with open("{}_in.json".format(props.correlation_id), "w") as write_file:
     with open("in.json", "w") as write_file:
         json.dump(internal_dict, write_file)
@@ -76,8 +83,9 @@ def external_request(ch, method, props, body):
     external_dict = {'body': body.decode(),
                      'correlation_id': props.correlation_id,
                      'reply_to': props.reply_to}
-
     print(external_dict)
+
+    # записываем в файл данные, которые пришли от внешней базы мвд
     with open("ex.json", "w") as write_file:
         json.dump(external_dict, write_file)
     exist_file_in_out(ch)
@@ -88,6 +96,7 @@ def external_request(ch, method, props, body):
 def exist_file_in_out(ch):
     """
     функция проверяет наличие файлов от внутренней и внешней базы,
+    переименовываем файл от внутренней базы в файл с данными от мвд,
     отправляем итоговый ок комитету,
     после чего удаляем созданные файлы in.json, ex.json
     :param ch: канал, который передаем от callback-функции
@@ -100,8 +109,14 @@ def exist_file_in_out(ch):
         os.remove('./ex.json')
 
 
-channel.basic_consume(callback, queue=queue_name)
-channel.basic_consume(internal_request, queue='internal_mvd')
-channel.basic_consume(external_request, queue='external_mvd')
+print('[*] Waiting for a request from the Committee')
 
+# принимаем запрос от комитета
+channel.basic_consume(callback, queue=queue_name)
+
+# принимаем данные от внутренней базы
+channel.basic_consume(internal_request, queue='internal_mvd')
+
+# принимаем данные от внешней базы
+channel.basic_consume(external_request, queue='external_mvd')
 channel.start_consuming()

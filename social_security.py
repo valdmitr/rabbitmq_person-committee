@@ -6,7 +6,8 @@ connection = pika.BlockingConnection(pika.ConnectionParameters(
 
 channel = connection.channel()
 
-channel.queue_declare(queue='committee_social') #создаем очередь для приема сообщений от комитета
+# создаем очередь для приема сообщений от комитета
+channel.queue_declare(queue='committee_social')
 
 def callback(ch, method, props, body):
     """
