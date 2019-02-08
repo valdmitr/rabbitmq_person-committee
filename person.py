@@ -92,7 +92,7 @@ class PersonRpcClient:
         if self.person_id == props.correlation_id:
             self.response_from_exams = body
 
-            with open("resp_exams.json", "w") as write_file:
+            with open("resp_exams_{}.json".format(props.correlation_id), "w") as write_file:
                 json.dump({'exams': body.decode()}, write_file)
 
             req_bank = json.dumps({'type': 'fee', 'sum': 500})
@@ -102,7 +102,7 @@ class PersonRpcClient:
                                        properties=pika.BasicProperties(
                                            correlation_id=props.correlation_id),
                                        body=req_bank)
-            self.exist_file_exams_bank(ch)
+            self.exist_file_exams_bank(ch, props)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -116,24 +116,24 @@ class PersonRpcClient:
         if self.person_id == props.correlation_id:
             self.response_from_bank = 'transaction_id {}'.format(body.decode())
 
-            with open("resp_bank.json", "w") as write_file:
+            with open("resp_bank_{}.json".format(props.correlation_id), "w") as write_file:
                 json.dump({'transaction_id': body.decode(),
                            'person_id': props.correlation_id}, write_file)
-            self.exist_file_exams_bank(ch)
+            self.exist_file_exams_bank(ch, props)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
-    def exist_file_exams_bank(self, ch):
+    def exist_file_exams_bank(self, ch, props):
         """
         проверяет наличие файлов от центра экзаменов и от банка,
         отправляем итоговый ок комитету с кодом транзакции и person_id,
         после чего удаляем созданные файлы
         :param ch: канал, который передаем от callback-функции
         """
-        if os.path.isfile('./resp_exams.json') and \
-                os.path.isfile('./resp_bank.json'):
-            with open("resp_bank.json", "r") as read_file:
+        if os.path.isfile('./resp_exams_{}.json'.format(props.correlation_id)) and \
+                os.path.isfile('./resp_bank_{}.json'.format(props.correlation_id)):
+            with open("resp_bank_{}.json".format(props.correlation_id), "r") as read_file:
                 data_to_publish = json.load(read_file)
                 ch.basic_publish(exchange='',
                                  routing_key='from_person_fee',
@@ -141,8 +141,8 @@ class PersonRpcClient:
                                      reply_to=self.callback_queue_final_result,
                                      correlation_id=data_to_publish['person_id']),
                                  body=data_to_publish['transaction_id'])
-            os.remove('./resp_bank.json')
-            os.remove('./resp_exams.json')
+            os.remove('./resp_bank_{}.json'.format(props.correlation_id))
+            os.remove('./resp_exams_{}.json'.format(props.correlation_id))
 
 
     def final_ok(self, ch, method, props, body):

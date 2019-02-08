@@ -68,9 +68,10 @@ def mid_request(ch, method, props, body):
     callback-функция для приема ответов от мид и мвд,
     отправляем запрос в министерство соцобеспечения
     """
-    if os.path.isfile('./response_from_mid.json') and \
-            os.path.isfile('./response_from_mvd.json'):
-        with open("response_from_mvd.json", "r") as read_file:
+    if os.path.isfile('./response_from_mid_{}.json'.format(props.correlation_id)) and \
+            os.path.isfile('./response_from_mvd_{}.json'.format(props.correlation_id)):
+        with open('response_from_mvd_{}.json'.format(props.correlation_id),
+                  "r") as read_file:
             data_to_publish = json.load(read_file)
             body_to_publish = "Ok from mid and mvd {}".format(
                 data_to_publish['body'])
@@ -80,8 +81,8 @@ def mid_request(ch, method, props, body):
                                  correlation_id=data_to_publish['correlation_id'],
                                  reply_to=data_to_publish['reply_to']),
                              body=body_to_publish)
-        os.remove('./response_from_mid.json')
-        os.remove('./response_from_mvd.json')
+        os.remove('response_from_mid_{}.json'.format(props.correlation_id))
+        os.remove('response_from_mvd_{}.json'.format(props.correlation_id))
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -108,7 +109,7 @@ def bank_request(ch, method, props, body):
     callback-функция для приема ответов от банка,
     пакуем данные файл
     """
-    with open("data_from_bank.json", "w") as write_file:
+    with open("data_from_bank_{}.json".format(props.correlation_id), "w") as write_file:
         json.dump({'transaction_id': body.decode(),
                    'person_id': props.correlation_id}, write_file)
 
@@ -122,8 +123,8 @@ def person_fee_request(ch, method, props, body):
     файла и сравниваем с полученными значениями. Отправляем запрос
     в налоговую.
     """
-    if os.path.isfile('./data_from_bank.json'):
-        with open("data_from_bank.json", "r") as read_file:
+    if os.path.isfile('./data_from_bank_{}.json'.format(props.correlation_id)):
+        with open("data_from_bank_{}.json".format(props.correlation_id), "r") as read_file:
             bank_dict = json.load(read_file)
             if bank_dict['transaction_id'] == body.decode()\
                     and bank_dict['person_id'] == props.correlation_id:
@@ -137,7 +138,7 @@ def person_fee_request(ch, method, props, body):
                                      reply_to=props.reply_to,
                                      correlation_id=props.correlation_id),
                                  body=tax_message)
-        os.remove('./data_from_bank.json')
+        os.remove('./data_from_bank_{}.json'.format(props.correlation_id))
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
 

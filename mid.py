@@ -35,12 +35,14 @@ def callback(ch, method, props, body):
     print(mid_dict)
 
     # записываем файл с данными от мид
-    with open("response_from_mid.json", "w") as write_file:
+    with open("response_from_mid_{}.json".format(props.correlation_id), "w") as write_file:
         json.dump(mid_dict, write_file)
 
     ch.basic_publish(exchange='',
                      routing_key='from_mid_mvd',
-                     body="response_from_mid.json")
+                     properties=pika.BasicProperties(
+                         correlation_id=props.correlation_id),
+                     body="response_from_mid_{}.json".format(props.correlation_id))
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 

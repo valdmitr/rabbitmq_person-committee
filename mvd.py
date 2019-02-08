@@ -64,10 +64,9 @@ def internal_request(ch, method, props, body):
     print(internal_dict)
 
     # записываем в файл данные, которые пришли от внутренней базы мвд
-    # with open("{}_in.json".format(props.correlation_id), "w") as write_file:
-    with open("in.json", "w") as write_file:
+    with open("in_{}.json".format(props.correlation_id), "w") as write_file:
         json.dump(internal_dict, write_file)
-    exist_file_in_out(ch)
+    exist_file_in_out(ch, props)
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -86,14 +85,14 @@ def external_request(ch, method, props, body):
     print(external_dict)
 
     # записываем в файл данные, которые пришли от внешней базы мвд
-    with open("ex.json", "w") as write_file:
+    with open("ex_{}.json".format(props.correlation_id), "w") as write_file:
         json.dump(external_dict, write_file)
-    exist_file_in_out(ch)
+    exist_file_in_out(ch, props)
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
-def exist_file_in_out(ch):
+def exist_file_in_out(ch, props):
     """
     функция проверяет наличие файлов от внутренней и внешней базы,
     переименовываем файл от внутренней базы в файл с данными от мвд,
@@ -101,12 +100,16 @@ def exist_file_in_out(ch):
     после чего удаляем созданные файлы in.json, ex.json
     :param ch: канал, который передаем от callback-функции
     """
-    if os.path.isfile('./in.json') and os.path.isfile('./ex.json'):
-        os.rename('./in.json', './response_from_mvd.json')
+    if os.path.isfile('./in_{}.json'.format(props.correlation_id)) and \
+            os.path.isfile('./ex_{}.json'.format(props.correlation_id)):
+        os.rename('./in_{}.json'.format(props.correlation_id),
+                  './response_from_mvd_{}.json'.format(props.correlation_id))
         ch.basic_publish(exchange='',
                          routing_key='from_mid_mvd',
-                         body="response_from_mvd.json")
-        os.remove('./ex.json')
+                         properties=pika.BasicProperties(
+                             correlation_id=props.correlation_id),
+                         body='response_from_mvd_{}.json'.format(props.correlation_id))
+        os.remove('./ex_{}.json'.format(props.correlation_id))
 
 
 print('[*] Waiting for a request from the Committee')
