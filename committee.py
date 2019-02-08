@@ -50,15 +50,12 @@ def on_request(ch, method, props, body):
 
     response = ("{} {}".format(body, r))
 
-    list_of_body = body.split(' ')
-
-    if list_of_body[0] == 'person':
-        ch.basic_publish(exchange='direct_mid',
-                         routing_key=routing_key,
-                         properties=pika.BasicProperties(
-                             correlation_id=props.correlation_id,
-                             reply_to=props.reply_to),
-                         body=str(response))
+    ch.basic_publish(exchange='direct_mid',
+                     routing_key=routing_key,
+                     properties=pika.BasicProperties(
+                         correlation_id=props.correlation_id,
+                         reply_to=props.reply_to),
+                     body=str(response))
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
 

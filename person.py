@@ -3,6 +3,8 @@ import uuid
 import json
 import os
 
+import helper
+
 
 class PersonRpcClient:
     """
@@ -159,10 +161,10 @@ class PersonRpcClient:
         :param message: сообщение запроса
         :return: ответ на запрос
         """
-        my_message = "{} {}".format("person", message)
-        # self.response = None
-        # self.response_from_exams = None
-        # self.response_from_bank = None
+        my_message = helper.simple_pack({'message_from_person':message})
+        self.response = None
+        self.response_from_exams = None
+        self.response_from_bank = None
         self.final_response = None
         self.person_id = str(uuid.uuid4())
         self.channel.basic_publish(exchange='',
@@ -179,24 +181,24 @@ class PersonRpcClient:
         self.response_from_bank.
         
         """
-        # while self.response is None:
-        #     while self.response_from_exams is None:
-        #         while self.response_from_bank is None:
-        #             while self.final_response is None:
-        #                 self.connection.process_data_events()
-        #             print(self.response.decode())
-        #             print("I want to pass exams.")
-        #         print (self.response_from_exams.decode())
-        #     print(self.response_from_bank)
-        # return self.final_response
-
-        while self.final_response is None:
-            self.connection.process_data_events()
-        print(self.response.decode())
-        print("I want to pass exams.")
-        print (self.response_from_exams.decode())
-        print(self.response_from_bank)
+        while self.response is None:
+            while self.response_from_exams is None:
+                while self.response_from_bank is None:
+                    while self.final_response is None:
+                        self.connection.process_data_events()
+                    print(self.response.decode())
+                    print("I want to pass exams.")
+                print (self.response_from_exams.decode())
+            print(self.response_from_bank)
         return self.final_response
+
+        # while self.final_response is None:
+        #     self.connection.process_data_events()
+        # print(self.response.decode())
+        # print("I want to pass exams.")
+        # print (self.response_from_exams.decode())
+        # print(self.response_from_bank)
+        # return self.final_response
 
 
 person = PersonRpcClient()
