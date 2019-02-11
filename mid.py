@@ -1,6 +1,8 @@
 import pika
 import json
 
+import helper
+
 connection = pika.BlockingConnection(pika.ConnectionParameters(
     host='localhost'
 ))
@@ -26,17 +28,15 @@ def callback(ch, method, props, body):
     принимаем собщение от комитета,
     отправляем ответ обратно комитету
     """
-    response = "{} {}".format("mid", body.decode())
-    print(response)
+    print(body.decode())
 
-    mid_dict = {'body': body.decode(),
+    mid_dict = {'mid': 'ok',
                 'correlation_id': props.correlation_id,
                 'reply_to': props.reply_to}
     print(mid_dict)
 
     # записываем файл с данными от мид
-    with open("response_from_mid_{}.json".format(props.correlation_id), "w") as write_file:
-        json.dump(mid_dict, write_file)
+    helper.write_file_json("response_from_mid_{}.json".format(props.correlation_id), mid_dict, body.decode())
 
     ch.basic_publish(exchange='',
                      routing_key='from_mid_mvd',

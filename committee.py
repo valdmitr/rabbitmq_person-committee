@@ -2,6 +2,8 @@ import pika
 import os
 import json
 
+import helper
+
 
 connection = pika.BlockingConnection(pika.ConnectionParameters(
     host='localhost'))
@@ -45,10 +47,10 @@ def on_request(ch, method, props, body):
     тут отправляем запрос в мид и мвд
     """
     body = body.decode()
-    r = 'ok'
     print(body)
 
-    response = ("{} {}".format(body, r))
+    r = {'Committee':'ok'}
+    response = helper.pack_dict_to_json(body, r)
 
     ch.basic_publish(exchange='direct_mid',
                      routing_key=routing_key,
@@ -65,13 +67,16 @@ def mid_request(ch, method, props, body):
     callback-функция для приема ответов от мид и мвд,
     отправляем запрос в министерство соцобеспечения
     """
+
     if os.path.isfile('./response_from_mid_{}.json'.format(props.correlation_id)) and \
             os.path.isfile('./response_from_mvd_{}.json'.format(props.correlation_id)):
         with open('response_from_mvd_{}.json'.format(props.correlation_id),
                   "r") as read_file:
+
             data_to_publish = json.load(read_file)
-            body_to_publish = "Ok from mid and mvd {}".format(
-                data_to_publish['body'])
+            data_to_publish.update({'mid': 'ok', 'mvd': 'ok'})
+            body_to_publish = helper.simple_pack(data_to_publish)
+
             ch.basic_publish(exchange='',
                              routing_key='committee_social',
                              properties=pika.BasicProperties(
@@ -90,7 +95,7 @@ def social_request(ch, method, props, body):
     отправляем предварительный ок человеку
     """
     print(body.decode())
-    response = "Pre-OK. You need to pass exam and pay fee"
+    response = helper.simple_pack({'Committee': 'Pre-OK. You need to pass exam and pay fee'})
 
     ch.basic_publish(exchange='',
                      routing_key=props.reply_to,
@@ -127,8 +132,10 @@ def person_fee_request(ch, method, props, body):
                     and bank_dict['person_id'] == props.correlation_id:
                 print("Ok, Person {} payd fee".format(props.correlation_id))
 
-                tax_message = "Person {} wants to get a residence " \
-                              "permit".format(props.correlation_id)
+                tax_message = helper.simple_pack({"Committee":
+                                                      "Person {} wants to get a "
+                                                      "residence permit".format(
+                                                          props.correlation_id)})
                 ch.basic_publish(exchange='',
                                  routing_key='committee_tax',
                                  properties=pika.BasicProperties(
@@ -147,7 +154,7 @@ def tax_request(ch, method, props, body):
     """
     print(body.decode())
     tax_dict = json.loads(body.decode())
-    response = "Congrats! Your taxpayer_id {}".format(tax_dict['taxpayer_id'])
+    response = helper.simple_pack({"Committee":"Congrats! Your taxpayer_id {}".format(tax_dict['taxpayer_id'])})
     ch.basic_publish(exchange='',
                      routing_key=props.reply_to,
                      properties=pika.BasicProperties(

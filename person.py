@@ -70,10 +70,11 @@ class PersonRpcClient:
         проверяем соответствие id и в response помещаем полученный body.
         Отправляем запрос на сдачу экзаменов.
         """
-        request_exams = "I want to pass exams."
-
         if self.person_id == props.correlation_id:
             self.response = body
+
+            request_exams = helper.simple_pack({"Person {}".format(
+                props.correlation_id): "I want to pass exams"})
 
             ch.basic_publish(exchange='',
                              routing_key='exams_center',
@@ -97,7 +98,8 @@ class PersonRpcClient:
             with open("resp_exams_{}.json".format(props.correlation_id), "w") as write_file:
                 json.dump({'exams': body.decode()}, write_file)
 
-            req_bank = json.dumps({'type': 'fee', 'sum': 500})
+            fee_dict = {'Person {}'.format(props.correlation_id): 'I would like to pay', 'type': 'fee', 'sum': 500}
+            req_bank = json.dumps(fee_dict)
 
             self.channel.basic_publish(exchange='',
                                        routing_key='bank',
@@ -181,13 +183,14 @@ class PersonRpcClient:
         self.response_from_bank.
         
         """
+
+
         while self.response is None:
             while self.response_from_exams is None:
                 while self.response_from_bank is None:
                     while self.final_response is None:
                         self.connection.process_data_events()
                     print(self.response.decode())
-                    print("I want to pass exams.")
                 print (self.response_from_exams.decode())
             print(self.response_from_bank)
         return self.final_response

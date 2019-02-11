@@ -23,9 +23,8 @@ def callback(ch, method, props, body):
     и отправляем человеку и комитету ответ о том, что человек
     успешно совершил оплату
     """
-
+    print(body.decode())
     bank_dict = json.loads(body)
-    print(bank_dict)
 
     if bank_dict['sum'] == 500:
         transaction_id = str(uuid.uuid4())

@@ -2,6 +2,8 @@ import pika
 import json
 import os
 
+import helper
+
 
 connection = pika.BlockingConnection(pika.ConnectionParameters(
     host='localhost'
@@ -39,14 +41,16 @@ def callback(ch, method, props, body):
     принимаем сообщения от комитета, отправляем запрос
     одновременно во внутреннюю и во внешнюю базу
     """
-    response = "{} {}".format("mvd", body.decode())
+    # print(body.decode())
+    response = helper.pack_dict_to_json(body.decode(), {"mvd": "check this person {}".format(props.correlation_id)})
     print(response)
+
     ch.basic_publish(exchange='fanout_internal_external',
                      routing_key='',
                      properties=pika.BasicProperties(
                          correlation_id=props.correlation_id,
                          reply_to=props.reply_to),
-                     body=body.decode())
+                     body=response)
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
@@ -55,17 +59,15 @@ def internal_request(ch, method, props, body):
     принимаем сообщение от внутренней базы,
     загоняем ответ в файл in.json
     """
-    response = "Internal ok {}".format(body.decode())
-    print(response)
-
-    internal_dict = {'body': body.decode(),
+    internal_dict = {'internal': 'ok',
                      'correlation_id': props.correlation_id,
                      'reply_to': props.reply_to}
     print(internal_dict)
 
     # записываем в файл данные, которые пришли от внутренней базы мвд
-    with open("in_{}.json".format(props.correlation_id), "w") as write_file:
-        json.dump(internal_dict, write_file)
+    helper.write_file_json("in_{}.json".format(props.correlation_id),
+                           internal_dict, body.decode())
+    # проверяем, созданы ли оба файла (от внутренней и внешней базы)
     exist_file_in_out(ch, props)
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -76,17 +78,15 @@ def external_request(ch, method, props, body):
     принимаем сообщение от внешней базы,
     загоняем ответ в файл ex.json
     """
-    response = "External ok {}".format(body.decode())
-    print(response)
-
-    external_dict = {'body': body.decode(),
+    external_dict = {'external': 'ok',
                      'correlation_id': props.correlation_id,
                      'reply_to': props.reply_to}
     print(external_dict)
 
     # записываем в файл данные, которые пришли от внешней базы мвд
-    with open("ex_{}.json".format(props.correlation_id), "w") as write_file:
-        json.dump(external_dict, write_file)
+    helper.write_file_json("ex_{}.json".format(props.correlation_id),
+                           external_dict, body.decode())
+    # проверяем, созданы ли оба файла (от внутренней и внешней базы)
     exist_file_in_out(ch, props)
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -95,20 +95,29 @@ def external_request(ch, method, props, body):
 def exist_file_in_out(ch, props):
     """
     функция проверяет наличие файлов от внутренней и внешней базы,
-    переименовываем файл от внутренней базы в файл с данными от мвд,
-    отправляем итоговый ок комитету,
+    создаем файл с общим ок от внутренней и внешней базы,
+    отправляем итоговый файл комитету,
     после чего удаляем созданные файлы in.json, ex.json
     :param ch: канал, который передаем от callback-функции
     """
     if os.path.isfile('./in_{}.json'.format(props.correlation_id)) and \
             os.path.isfile('./ex_{}.json'.format(props.correlation_id)):
-        os.rename('./in_{}.json'.format(props.correlation_id),
-                  './response_from_mvd_{}.json'.format(props.correlation_id))
+
+        with open('in_{}.json'.format(props.correlation_id),
+                  "r") as read_file:
+            in_file = json.load(read_file)
+            in_file.update({'internal': 'ok', 'external': 'ok'})
+            with open('response_from_mvd_{}.json'.format(props.correlation_id),
+                      "w") as wf:
+                json.dump(in_file, wf)
+
+
         ch.basic_publish(exchange='',
                          routing_key='from_mid_mvd',
                          properties=pika.BasicProperties(
                              correlation_id=props.correlation_id),
                          body='response_from_mvd_{}.json'.format(props.correlation_id))
+        os.remove('./in_{}.json'.format(props.correlation_id))
         os.remove('./ex_{}.json'.format(props.correlation_id))
 
 
