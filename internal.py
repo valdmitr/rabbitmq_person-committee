@@ -13,12 +13,18 @@ channel.queue_bind(exchange='fanout_internal_external',
                    queue=queue_name)
 
 
+BAD_PERSON = {
+    "c2772114-b159-402c-9e6c-ffdd35a7ad9e": 'kidnapping'
+}
+
+
 def callback(ch, method, props, body):
     """
     принимаем собщение от мвд,
     отправляем ответ обратно мвд
     """
     print(body.decode())
+
     ch.basic_publish(exchange='',
                      routing_key='internal_mvd',
                      properties=pika.BasicProperties(

@@ -96,7 +96,7 @@ class PersonRpcClient:
             self.response_from_exams = body
 
             with open("resp_exams_{}.json".format(props.correlation_id), "w") as write_file:
-                json.dump({'exams': body.decode()}, write_file)
+                write_file.write(body.decode())
 
             fee_dict = {'Person {}'.format(props.correlation_id): 'I would like to pay', 'type': 'fee', 'sum': 500}
             req_bank = json.dumps(fee_dict)
@@ -104,6 +104,7 @@ class PersonRpcClient:
             self.channel.basic_publish(exchange='',
                                        routing_key='bank',
                                        properties=pika.BasicProperties(
+                                           reply_to=self.callback_queue_bank,
                                            correlation_id=props.correlation_id),
                                        body=req_bank)
             self.exist_file_exams_bank(ch, props)
@@ -114,16 +115,28 @@ class PersonRpcClient:
     def bank_request(self, ch, method, props, body):
         """
         callback-функция для приема ответов от банка,
-        проверяем соответствие id и в response помещаем полученный код
+        проверяем соответствие id, а также проверяем какой
+        пришел ответ от банка, и затем в response помещаем полученный код
         от банка. Создаем файл с кодом транзакции от банка и person_id.
         """
         if self.person_id == props.correlation_id:
+            dict_bank_resp = json.loads(body)
+
             self.response_from_bank = 'transaction_id {}'.format(body.decode())
 
-            with open("resp_bank_{}.json".format(props.correlation_id), "w") as write_file:
-                json.dump({'transaction_id': body.decode(),
+            with open("resp_bank_{}.json".format(props.correlation_id),
+                      "w") as write_file:
+                json.dump({'transaction_id': dict_bank_resp['transaction_id'],
                            'person_id': props.correlation_id}, write_file)
             self.exist_file_exams_bank(ch, props)
+
+            # self.response_from_bank = 'transaction_id {}'.format(body.decode())
+            #
+            # with open("resp_bank_{}.json".format(props.correlation_id),
+            #           "w") as write_file:
+            #     json.dump({'transaction_id': body.decode(),
+            #                'person_id': props.correlation_id}, write_file)
+            # self.exist_file_exams_bank(ch, props)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -139,14 +152,15 @@ class PersonRpcClient:
                 os.path.isfile('./resp_bank_{}.json'.format(props.correlation_id)):
             with open("resp_bank_{}.json".format(props.correlation_id), "r") as read_file:
                 data_to_publish = json.load(read_file)
+
                 ch.basic_publish(exchange='',
                                  routing_key='from_person_fee',
                                  properties=pika.BasicProperties(
                                      reply_to=self.callback_queue_final_result,
                                      correlation_id=data_to_publish['person_id']),
                                  body=data_to_publish['transaction_id'])
-            os.remove('./resp_bank_{}.json'.format(props.correlation_id))
-            os.remove('./resp_exams_{}.json'.format(props.correlation_id))
+            # os.remove('./resp_bank_{}.json'.format(props.correlation_id))
+            # os.remove('./resp_exams_{}.json'.format(props.correlation_id))
 
 
     def final_ok(self, ch, method, props, body):

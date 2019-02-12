@@ -2,6 +2,8 @@ import pika
 import uuid
 import json
 
+import helper
+
 connection = pika.BlockingConnection(pika.ConnectionParameters(
     host='localhost'))
 channel = connection.channel()
@@ -27,12 +29,21 @@ def callback(ch, method, props, body):
     bank_dict = json.loads(body)
 
     if bank_dict['sum'] == 500:
-        transaction_id = str(uuid.uuid4())
+        message = helper.simple_pack({'transaction_id': str(uuid.uuid4()), 'response': 'ok'})
         ch.basic_publish(exchange='direct_bank',
                          routing_key=routing_key,
                          properties=pika.BasicProperties(
                              correlation_id=props.correlation_id),
-                         body=transaction_id)
+                         body=message)
+    else:
+        message = helper.simple_pack({'bank_resp': 'payment failed'})
+        ch.basic_publish(exchange='',
+                         routing_key=props.reply_to,
+                         properties=pika.BasicProperties(
+                             correlation_id=props.correlation_id),
+                         body=message)
+
+
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
 

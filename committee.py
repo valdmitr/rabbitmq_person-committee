@@ -111,8 +111,10 @@ def bank_request(ch, method, props, body):
     callback-функция для приема ответов от банка,
     пакуем данные файл
     """
+    dict_bank_resp = json.loads(body)
+
     with open("data_from_bank_{}.json".format(props.correlation_id), "w") as write_file:
-        json.dump({'transaction_id': body.decode(),
+        json.dump({'transaction_id': dict_bank_resp['transaction_id'],
                    'person_id': props.correlation_id}, write_file)
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
