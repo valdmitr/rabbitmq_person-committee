@@ -159,8 +159,8 @@ class PersonRpcClient:
                                      reply_to=self.callback_queue_final_result,
                                      correlation_id=data_to_publish['person_id']),
                                  body=data_to_publish['transaction_id'])
-            # os.remove('./resp_bank_{}.json'.format(props.correlation_id))
-            # os.remove('./resp_exams_{}.json'.format(props.correlation_id))
+            os.remove('./resp_bank_{}.json'.format(props.correlation_id))
+            os.remove('./resp_exams_{}.json'.format(props.correlation_id))
 
 
     def final_ok(self, ch, method, props, body):
