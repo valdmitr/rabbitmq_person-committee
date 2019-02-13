@@ -1,6 +1,5 @@
 import pika
 import os
-import json
 
 import helper
 
@@ -73,7 +72,7 @@ def mid_request(ch, method, props, body):
         with open('response_from_mvd_{}.json'.format(props.correlation_id),
                   "r") as read_file:
 
-            data_to_publish = json.load(read_file)
+            data_to_publish = helper.unpack_file(read_file)
             data_to_publish.update({'mid': 'ok', 'mvd': 'ok'})
             body_to_publish = helper.pack_to_str(data_to_publish)
 
@@ -111,11 +110,11 @@ def bank_request(ch, method, props, body):
     callback-функция для приема ответов от банка,
     пакуем данные файл
     """
-    dict_bank_resp = json.loads(body)
+    dict_bank_resp = helper.unpack_str(body)
 
-    with open("data_from_bank_{}.json".format(props.correlation_id), "w") as write_file:
-        json.dump({'transaction_id': dict_bank_resp['transaction_id'],
-                   'person_id': props.correlation_id}, write_file)
+    helper.write_file("data_from_bank_{}.json".format(props.correlation_id),
+                      {'transaction_id': dict_bank_resp['transaction_id'],
+                       'person_id': props.correlation_id})
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -129,7 +128,7 @@ def person_fee_request(ch, method, props, body):
     """
     if os.path.isfile('./data_from_bank_{}.json'.format(props.correlation_id)):
         with open("data_from_bank_{}.json".format(props.correlation_id), "r") as read_file:
-            bank_dict = json.load(read_file)
+            bank_dict = helper.unpack_file(read_file)
             if bank_dict['transaction_id'] == body.decode()\
                     and bank_dict['person_id'] == props.correlation_id:
                 print("Ok, Person {} payd fee".format(props.correlation_id))
@@ -155,7 +154,7 @@ def tax_request(ch, method, props, body):
     отправляем итоговый ответ человеку
     """
     print(body.decode())
-    tax_dict = json.loads(body.decode())
+    tax_dict = helper.unpack_str(body.decode())
     response = helper.pack_to_str({"Committee":"Congrats! Your taxpayer_id {}".format(tax_dict['taxpayer_id'])})
     ch.basic_publish(exchange='',
                      routing_key=props.reply_to,

@@ -1,5 +1,13 @@
 import json
 
+def unpack_file(file):
+    return unpack_file_json(file)
+
+
+def unpack_file_json(file):
+    return json.load(file)
+
+
 def unpack_str(string):
     """
     распаковываем данные из нужного формата
@@ -56,11 +64,30 @@ def append_dict_to_json(json_str, my_dict):
     return pack_to_str(a)
 
 
-def write_file_json(file_name, my_dict, json_str=''):
+def update_file(file_name, string, smth):
+    return update_file_json(file_name, string, smth)
+
+
+def update_file_json(file_name, json_str, my_dict):
+    """
+    Берем json-строку, преобразовываем в словарь, обновляем его,
+    и новый словарь загружаем в файл
+    :param file_name: имя будущего файла
+    :param my_dict:
+    :param json_str:
+    :return:
+    """
     a = json.loads(json_str)
     a.update(my_dict)
+
     with open(file_name, "w") as write_file:
         json.dump(a, write_file)
 
-#
-# def send_message()
+
+def write_file(file_name, my_dict):
+    return write_file_json(file_name, my_dict)
+
+
+def write_file_json(file_name, my_dict):
+    with open(file_name, "w") as write_file:
+        json.dump(my_dict, write_file)

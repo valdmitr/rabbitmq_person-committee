@@ -1,6 +1,5 @@
 import pika
 import uuid
-import json
 import os
 
 import helper
@@ -125,13 +124,14 @@ class PersonRpcClient:
 
                 self.response_from_bank = 'transaction_id {}'.format(body.decode())
 
-                with open("resp_bank_{}.json".format(props.correlation_id),
-                              "w") as write_file:
-                    json.dump({'transaction_id': dict_bank_resp['transaction_id'],
-                                   'person_id': props.correlation_id}, write_file)
+                helper.write_file("resp_bank_{}.json".format(props.correlation_id),
+                                  {'transaction_id': dict_bank_resp['transaction_id'],
+                                   'person_id': props.correlation_id})
+
                 self.exist_file_exams_bank(ch, props)
             else:
                 self.response_from_bank = body.decode()
+
 
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -147,7 +147,7 @@ class PersonRpcClient:
         if os.path.isfile('./resp_exams_{}.json'.format(props.correlation_id)) and \
                 os.path.isfile('./resp_bank_{}.json'.format(props.correlation_id)):
             with open("resp_bank_{}.json".format(props.correlation_id), "r") as read_file:
-                data_to_publish = json.load(read_file)
+                data_to_publish = helper.unpack_file(read_file)
 
                 ch.basic_publish(exchange='',
                                  routing_key='from_person_fee',

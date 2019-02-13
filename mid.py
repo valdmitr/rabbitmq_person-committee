@@ -1,5 +1,4 @@
 import pika
-import json
 
 import helper
 
@@ -36,7 +35,7 @@ def callback(ch, method, props, body):
     print(mid_dict)
 
     # записываем файл с данными от мид
-    helper.write_file_json("response_from_mid_{}.json".format(props.correlation_id), mid_dict, body.decode())
+    helper.update_file("response_from_mid_{}.json".format(props.correlation_id), body.decode(), mid_dict)
 
     ch.basic_publish(exchange='',
                      routing_key='from_mid_mvd',

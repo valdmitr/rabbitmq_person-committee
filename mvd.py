@@ -1,5 +1,4 @@
 import pika
-import json
 import os
 
 import helper
@@ -64,8 +63,8 @@ def internal_request(ch, method, props, body):
     print(internal_dict)
 
     # записываем в файл данные, которые пришли от внутренней базы мвд
-    helper.write_file_json("in_{}.json".format(props.correlation_id),
-                           internal_dict, body.decode())
+    helper.update_file("in_{}.json".format(props.correlation_id),
+                           body.decode(), internal_dict)
     # проверяем, созданы ли оба файла (от внутренней и внешней базы)
     exist_file_in_out(ch, props)
 
@@ -83,8 +82,8 @@ def external_request(ch, method, props, body):
     print(external_dict)
 
     # записываем в файл данные, которые пришли от внешней базы мвд
-    helper.write_file_json("ex_{}.json".format(props.correlation_id),
-                           external_dict, body.decode())
+    helper.update_file("ex_{}.json".format(props.correlation_id),
+                           body.decode(), external_dict)
     # проверяем, созданы ли оба файла (от внутренней и внешней базы)
     exist_file_in_out(ch, props)
 
@@ -104,12 +103,10 @@ def exist_file_in_out(ch, props):
 
         with open('in_{}.json'.format(props.correlation_id),
                   "r") as read_file:
-            in_file = json.load(read_file)
+            in_file = helper.unpack_file(read_file)
             in_file.update({'internal': 'ok', 'external': 'ok'})
-            with open('response_from_mvd_{}.json'.format(props.correlation_id),
-                      "w") as wf:
-                json.dump(in_file, wf)
 
+            helper.write_file('response_from_mvd_{}.json'.format(props.correlation_id), in_file)
 
         ch.basic_publish(exchange='',
                          routing_key='from_mid_mvd',

@@ -1,6 +1,7 @@
 import pika
-import json
 import uuid
+
+import helper
 
 connection = pika.BlockingConnection(pika.ConnectionParameters(
     host='localhost'))
@@ -16,7 +17,7 @@ def callback(ch, method, props, body):
     отправляем ответ обратно комитету
     """
     print(body.decode())
-    resp_tax = json.dumps({'taxpayer_id': str(uuid.uuid4())})
+    resp_tax = helper.pack_to_str({'taxpayer_id': str(uuid.uuid4())})
 
     ch.basic_publish(exchange='',
                      routing_key='from_tax',

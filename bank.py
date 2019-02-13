@@ -1,6 +1,5 @@
 import pika
 import uuid
-import json
 
 import helper
 
@@ -26,10 +25,11 @@ def callback(ch, method, props, body):
     успешно совершил оплату
     """
     print(body.decode())
-    bank_dict = json.loads(body)
+    bank_dict = helper.unpack_str(body)
 
     if bank_dict['sum'] == 500:
-        message = helper.pack_to_str({'transaction_id': str(uuid.uuid4()), 'response': 'ok'})
+        message = helper.pack_to_str({'transaction_id': str(uuid.uuid4()),
+                                      'response': 'ok'})
         ch.basic_publish(exchange='direct_bank',
                          routing_key=routing_key,
                          properties=pika.BasicProperties(
@@ -42,8 +42,6 @@ def callback(ch, method, props, body):
                          properties=pika.BasicProperties(
                              correlation_id=props.correlation_id),
                          body=message)
-
-
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
