@@ -29,14 +29,14 @@ def callback(ch, method, props, body):
     bank_dict = json.loads(body)
 
     if bank_dict['sum'] == 500:
-        message = helper.simple_pack({'transaction_id': str(uuid.uuid4()), 'response': 'ok'})
+        message = helper.pack_to_str({'transaction_id': str(uuid.uuid4()), 'response': 'ok'})
         ch.basic_publish(exchange='direct_bank',
                          routing_key=routing_key,
                          properties=pika.BasicProperties(
                              correlation_id=props.correlation_id),
                          body=message)
     else:
-        message = helper.simple_pack({'bank_resp': 'payment failed'})
+        message = helper.pack_to_str({'bank_resp': 'payment failed'})
         ch.basic_publish(exchange='',
                          routing_key=props.reply_to,
                          properties=pika.BasicProperties(

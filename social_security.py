@@ -17,7 +17,7 @@ def callback(ch, method, props, body):
     отправляем ответ обратно комитету
     """
     print(body.decode())
-    response = helper.pack_dict_to_json(body.decode(), {'social security': 'ok'})
+    response = helper.append_smth(body.decode(), {'social security': 'ok'})
 
     ch.basic_publish(exchange='',
                      routing_key='from_social_sec',

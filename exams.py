@@ -16,7 +16,7 @@ def callback(ch, method, props, body):
     отправляем ответ о том, что человек сдал экзамены
     """
     print(body.decode())
-    response = helper.pack_dict_to_json(body.decode(), {'exams center': 'Yep, you passed!'})
+    response = helper.append_smth(body.decode(), {'exams center': 'Yep, you passed!'})
 
     ch.basic_publish(exchange='',
                      routing_key=props.reply_to,

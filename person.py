@@ -73,7 +73,7 @@ class PersonRpcClient:
         if self.person_id == props.correlation_id:
             self.response = body
 
-            request_exams = helper.simple_pack({"Person {}".format(
+            request_exams = helper.pack_to_str({"Person {}".format(
                 props.correlation_id): "I want to pass exams"})
 
             ch.basic_publish(exchange='',
@@ -99,7 +99,7 @@ class PersonRpcClient:
                 write_file.write(body.decode())
 
             fee_dict = {'Person {}'.format(props.correlation_id): 'I would like to pay', 'type': 'fee', 'sum': 500}
-            req_bank = json.dumps(fee_dict)
+            req_bank = helper.pack_to_str(fee_dict)
 
             self.channel.basic_publish(exchange='',
                                        routing_key='bank',
@@ -120,23 +120,19 @@ class PersonRpcClient:
         от банка. Создаем файл с кодом транзакции от банка и person_id.
         """
         if self.person_id == props.correlation_id:
-            dict_bank_resp = json.loads(body)
+            dict_bank_resp = helper.unpack_str(body)
+            if dict_bank_resp['response'] == 'ok':
 
-            self.response_from_bank = 'transaction_id {}'.format(body.decode())
+                self.response_from_bank = 'transaction_id {}'.format(body.decode())
 
-            with open("resp_bank_{}.json".format(props.correlation_id),
-                      "w") as write_file:
-                json.dump({'transaction_id': dict_bank_resp['transaction_id'],
-                           'person_id': props.correlation_id}, write_file)
-            self.exist_file_exams_bank(ch, props)
+                with open("resp_bank_{}.json".format(props.correlation_id),
+                              "w") as write_file:
+                    json.dump({'transaction_id': dict_bank_resp['transaction_id'],
+                                   'person_id': props.correlation_id}, write_file)
+                self.exist_file_exams_bank(ch, props)
+            else:
+                self.response_from_bank = body.decode()
 
-            # self.response_from_bank = 'transaction_id {}'.format(body.decode())
-            #
-            # with open("resp_bank_{}.json".format(props.correlation_id),
-            #           "w") as write_file:
-            #     json.dump({'transaction_id': body.decode(),
-            #                'person_id': props.correlation_id}, write_file)
-            # self.exist_file_exams_bank(ch, props)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -177,7 +173,7 @@ class PersonRpcClient:
         :param message: сообщение запроса
         :return: ответ на запрос
         """
-        my_message = helper.simple_pack({'message_from_person':message})
+        my_message = helper.pack_to_str({'message_from_person':message})
         self.response = None
         self.response_from_exams = None
         self.response_from_bank = None

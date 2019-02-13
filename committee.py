@@ -50,7 +50,7 @@ def on_request(ch, method, props, body):
     print(body)
 
     r = {'Committee':'ok'}
-    response = helper.pack_dict_to_json(body, r)
+    response = helper.append_smth(body, r)
 
     ch.basic_publish(exchange='direct_mid',
                      routing_key=routing_key,
@@ -75,7 +75,7 @@ def mid_request(ch, method, props, body):
 
             data_to_publish = json.load(read_file)
             data_to_publish.update({'mid': 'ok', 'mvd': 'ok'})
-            body_to_publish = helper.simple_pack(data_to_publish)
+            body_to_publish = helper.pack_to_str(data_to_publish)
 
             ch.basic_publish(exchange='',
                              routing_key='committee_social',
@@ -95,7 +95,7 @@ def social_request(ch, method, props, body):
     отправляем предварительный ок человеку
     """
     print(body.decode())
-    response = helper.simple_pack({'Committee': 'Pre-OK. You need to pass exam and pay fee'})
+    response = helper.pack_to_str({'Committee': 'Pre-OK. You need to pass exam and pay fee'})
 
     ch.basic_publish(exchange='',
                      routing_key=props.reply_to,
@@ -134,7 +134,7 @@ def person_fee_request(ch, method, props, body):
                     and bank_dict['person_id'] == props.correlation_id:
                 print("Ok, Person {} payd fee".format(props.correlation_id))
 
-                tax_message = helper.simple_pack({"Committee":
+                tax_message = helper.pack_to_str({"Committee":
                                                       "Person {} wants to get a "
                                                       "residence permit".format(
                                                           props.correlation_id)})
@@ -156,7 +156,7 @@ def tax_request(ch, method, props, body):
     """
     print(body.decode())
     tax_dict = json.loads(body.decode())
-    response = helper.simple_pack({"Committee":"Congrats! Your taxpayer_id {}".format(tax_dict['taxpayer_id'])})
+    response = helper.pack_to_str({"Committee":"Congrats! Your taxpayer_id {}".format(tax_dict['taxpayer_id'])})
     ch.basic_publish(exchange='',
                      routing_key=props.reply_to,
                      properties=pika.BasicProperties(
