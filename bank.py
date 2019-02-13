@@ -36,7 +36,7 @@ def callback(ch, method, props, body):
                              correlation_id=props.correlation_id),
                          body=message)
     else:
-        message = helper.pack_to_str({'bank_resp': 'payment failed'})
+        message = helper.pack_to_str({'response': 'payment failed'})
         ch.basic_publish(exchange='',
                          routing_key=props.reply_to,
                          properties=pika.BasicProperties(

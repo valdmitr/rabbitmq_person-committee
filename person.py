@@ -14,8 +14,8 @@ class PersonRpcClient:
         """
         создаем подключение,
         подключаемся,
-        создаем очередь reply_to,
-        и принимаем по ней ответ на наш запрос
+        создаем очереди,
+        и принимаем по ним ответ на наш запрос
         """
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(
             host='localhost'))
@@ -63,6 +63,8 @@ class PersonRpcClient:
                                    queue=self.callback_queue_final_result)
 
 
+
+
     def waiting_ok(self, ch, method, props, body):
         """
         callback-функция для приема ответов на запрос,
@@ -70,17 +72,22 @@ class PersonRpcClient:
         Отправляем запрос на сдачу экзаменов.
         """
         if self.person_id == props.correlation_id:
-            self.response = body
+            pre_ok_dict = helper.unpack_str(body)
+            if pre_ok_dict['response'] == 'ok':
+                self.response = body.decode()
 
-            request_exams = helper.pack_to_str({"Person {}".format(
-                props.correlation_id): "I want to pass exams"})
+                request_exams = helper.pack_to_str({"Person {}".format(
+                    props.correlation_id): "I want to pass exams"})
 
-            ch.basic_publish(exchange='',
-                             routing_key='exams_center',
-                             properties=pika.BasicProperties(
-                                 reply_to=self.callback_queue_exams,
-                                 correlation_id=props.correlation_id),
-                             body=request_exams)
+                ch.basic_publish(exchange='',
+                                 routing_key='exams_center',
+                                 properties=pika.BasicProperties(
+                                     reply_to=self.callback_queue_exams,
+                                     correlation_id=props.correlation_id),
+                                 body=request_exams)
+            else:
+                self.response = body.decode()
+                self.is_final = True
 
 
     def passed_exams(self, ch, method, props, body):
@@ -131,6 +138,7 @@ class PersonRpcClient:
                 self.exist_file_exams_bank(ch, props)
             else:
                 self.response_from_bank = body.decode()
+                self.is_final = True
 
 
 
@@ -174,11 +182,23 @@ class PersonRpcClient:
         :return: ответ на запрос
         """
         my_message = helper.pack_to_str({'message_from_person':message})
+
+        # предварительный ок
         self.response = None
+
+        # ответ от экзаменационного центра
         self.response_from_exams = None
+
+        # ответ от банка
         self.response_from_bank = None
+
+        # финальный ответ
         self.final_response = None
+
+        # флаг, если мы не дождались финального ответа
+        self.is_final = False
         self.person_id = str(uuid.uuid4())
+        # self.person_id = 'c2772114-b159-402c-9e6c-ffdd35a7ad9e'
         self.channel.basic_publish(exchange='',
                                    routing_key='approval',
                                    properties=pika.BasicProperties(
@@ -195,12 +215,14 @@ class PersonRpcClient:
         """
 
 
+        # while self.response is None and self.is_final==False:
         while self.response is None:
             while self.response_from_exams is None:
                 while self.response_from_bank is None:
-                    while self.final_response is None:
+                    while self.final_response==None and self.is_final==False:
+                    # while self.final_response == None:
                         self.connection.process_data_events()
-                    print(self.response.decode())
+                    print(self.response)
                 print (self.response_from_exams.decode())
             print(self.response_from_bank)
         return self.final_response
@@ -218,5 +240,4 @@ person = PersonRpcClient()
 
 print('[x] I want to get a residence permit')
 response = person.call('I want to get a residence permit')
-print(response.decode())
-# print (response)
+print(response)

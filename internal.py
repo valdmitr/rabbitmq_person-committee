@@ -1,5 +1,7 @@
 import pika
 
+import helper
+
 connection = pika.BlockingConnection(pika.ConnectionParameters(
     host='localhost'))
 channel = connection.channel()
@@ -14,7 +16,7 @@ channel.queue_bind(exchange='fanout_internal_external',
 
 
 BAD_PERSON = {
-    "c2772114-b159-402c-9e6c-ffdd35a7ad9e": 'kidnapping'
+    'c2772114-b159-402c-9e6c-ffdd35a7ad9e': 'kidnapping'
 }
 
 
@@ -23,14 +25,25 @@ def callback(ch, method, props, body):
     принимаем собщение от мвд,
     отправляем ответ обратно мвд
     """
-    print(body.decode())
+    if props.correlation_id not in BAD_PERSON:
+        print(body.decode())
 
-    ch.basic_publish(exchange='',
-                     routing_key='internal_mvd',
-                     properties=pika.BasicProperties(
-                         correlation_id=props.correlation_id,
-                         reply_to=props.reply_to),
-                     body=body.decode())
+        ch.basic_publish(exchange='',
+                         routing_key='internal_mvd',
+                         properties=pika.BasicProperties(
+                             correlation_id=props.correlation_id,
+                             reply_to=props.reply_to),
+                         body=body.decode())
+    else:
+        message = helper.pack_to_str({'response': 'request failed, person {} is criminal'.format(props.correlation_id)})
+
+        ch.basic_publish(exchange='',
+                         routing_key=props.reply_to,
+                         properties=pika.BasicProperties(
+                             correlation_id=props.correlation_id),
+                         body=message)
+
+
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
