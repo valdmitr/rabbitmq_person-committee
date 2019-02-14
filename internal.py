@@ -15,17 +15,18 @@ channel.queue_bind(exchange='fanout_internal_external',
                    queue=queue_name)
 
 
-BAD_PERSON = {
+BAD_PERSON_INTERNAL = {
     'c2772114-b159-402c-9e6c-ffdd35a7ad9e': 'kidnapping'
 }
 
 
 def callback(ch, method, props, body):
     """
-    принимаем собщение от мвд,
-    отправляем ответ обратно мвд
+    принимаем собщение от мвд, проверяем есть ли человек во
+    внутренних базах. Если да, то кидаем отказ человеку,
+    если нет, отправляем ответ обратно мвд.
     """
-    if props.correlation_id not in BAD_PERSON:
+    if props.correlation_id not in BAD_PERSON_INTERNAL:
         print(body.decode())
 
         ch.basic_publish(exchange='',

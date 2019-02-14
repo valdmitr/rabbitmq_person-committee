@@ -77,7 +77,7 @@ class PersonRpcClient:
                 self.response = body.decode()
 
                 request_exams = helper.pack_to_str({"Person {}".format(
-                    props.correlation_id): "I want to pass exams"})
+                    props.correlation_id): "I want to pass exams", "exam_result": 80})
 
                 ch.basic_publish(exchange='',
                                  routing_key='exams_center',
@@ -97,24 +97,27 @@ class PersonRpcClient:
         центра сдачи экзаменов. Создаем файл с ответом от центра экзаменов.
         Отправляем пошлину в банк.
         """
-
         if self.person_id == props.correlation_id:
-            self.response_from_exams = body
+            dict_exams_response = helper.unpack_str(body)
+            if dict_exams_response['response'] == 'ok':
+                self.response_from_exams = body.decode()
 
-            with open("resp_exams_{}.json".format(props.correlation_id), "w") as write_file:
-                write_file.write(body.decode())
+                with open("resp_exams_{}.json".format(props.correlation_id), "w") as write_file:
+                    write_file.write(body.decode())
 
-            fee_dict = {'Person {}'.format(props.correlation_id): 'I would like to pay', 'type': 'fee', 'sum': 500}
-            req_bank = helper.pack_to_str(fee_dict)
+                fee_dict = {'Person {}'.format(props.correlation_id): 'I would like to pay', 'type': 'fee', 'sum': 500}
+                req_bank = helper.pack_to_str(fee_dict)
 
-            self.channel.basic_publish(exchange='',
-                                       routing_key='bank',
-                                       properties=pika.BasicProperties(
-                                           reply_to=self.callback_queue_bank,
-                                           correlation_id=props.correlation_id),
-                                       body=req_bank)
-            self.exist_file_exams_bank(ch, props)
-
+                self.channel.basic_publish(exchange='',
+                                           routing_key='bank',
+                                           properties=pika.BasicProperties(
+                                               reply_to=self.callback_queue_bank,
+                                               correlation_id=props.correlation_id),
+                                           body=req_bank)
+                self.exist_file_exams_bank(ch, props)
+            else:
+                self.response_from_exams = body.decode()
+                self.is_final = True
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
@@ -199,6 +202,7 @@ class PersonRpcClient:
         self.is_final = False
         self.person_id = str(uuid.uuid4())
         # self.person_id = 'c2772114-b159-402c-9e6c-ffdd35a7ad9e'
+        # self.person_id = '8c460b99-d9a3-46bd-abb5-cd651a10310c'
         self.channel.basic_publish(exchange='',
                                    routing_key='approval',
                                    properties=pika.BasicProperties(
@@ -215,25 +219,27 @@ class PersonRpcClient:
         """
 
 
-        # while self.response is None and self.is_final==False:
-        while self.response is None:
-            while self.response_from_exams is None:
-                while self.response_from_bank is None:
-                    while self.final_response==None and self.is_final==False:
-                    # while self.final_response == None:
-                        self.connection.process_data_events()
-                    print(self.response)
-                print (self.response_from_exams.decode())
-            print(self.response_from_bank)
-        return self.final_response
-
-        # while self.final_response is None:
-        #     self.connection.process_data_events()
-        # print(self.response.decode())
-        # print("I want to pass exams.")
-        # print (self.response_from_exams.decode())
-        # print(self.response_from_bank)
+        # # while self.response is None and self.is_final==False:
+        # while self.response is None:
+        #     while self.response_from_exams is None:
+        #         while self.response_from_bank is None:
+        #             while self.final_response==None and self.is_final==False:
+        #             # while self.final_response == None:
+        #                 self.connection.process_data_events()
+        #             print(self.response)
+        #         print (self.response_from_exams.decode())
+        #     print(self.response_from_bank)
         # return self.final_response
+
+        response_list = [self.response, self.response_from_exams, self.response_from_bank, self.final_response]
+
+        while not self.final_response and not self.is_final:
+        # if not all(response_list) and not self.is_final:
+            self.connection.process_data_events()
+        print(self.response)
+        print(self.response_from_exams)
+        print(self.response_from_bank)
+        return self.final_response
 
 
 person = PersonRpcClient()
