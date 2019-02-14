@@ -13,12 +13,16 @@ channel.queue_declare(queue='exams_center')
 def callback(ch, method, props, body):
     """
     callback-функция для приема запрсов для сдачи экзаменов от людей,
-    отправляем ответ о том, что человек сдал экзамены
+    проверяем проходит ли человек установленный порог,
+    отправляем ответ о том, что человек сдал экзамены,
+    если не сдал - кидаем обратный ответ.
     """
     print(body.decode())
     exam_dict = helper.unpack_str(body)
     if exam_dict['exam_result'] >= 80:
-        response = helper.append_smth(body.decode(), {'exams_center': 'Yep, you passed!', 'response': 'ok'})
+        response = helper.append_smth(body.decode(),
+                                      {'exams_center': 'Yep, you passed!',
+                                       'response': 'ok'})
 
         ch.basic_publish(exchange='',
                          routing_key=props.reply_to,
@@ -26,7 +30,8 @@ def callback(ch, method, props, body):
                              correlation_id=props.correlation_id),
                          body=response)
     else:
-        response = helper.pack_to_str({'exams_center': 'No','response': 'sorry, you did not pass the exam'})
+        response = helper.pack_to_str({'exams_center': 'No',
+                                       'response': 'sorry, you did not pass the exam'})
         ch.basic_publish(exchange='',
                          routing_key=props.reply_to,
                          properties=pika.BasicProperties(

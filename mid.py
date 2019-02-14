@@ -29,8 +29,10 @@ ILLEGAL_IMMIGRANT = ['7a6099e2-bcf8-4b89-8287-9662cc8adbe9',
 
 def callback(ch, method, props, body):
     """
-    принимаем собщение от комитета,
-    отправляем ответ обратно комитету
+    принимаем собщение от комитета, проверяем является ли человек
+    нелегальным иммигрантом, если является - кидаем ответ человеку
+    сразу, что запрос не прошел. Если не является - отправляем
+    ответ обратно комитету.
     """
     print(body.decode())
 
@@ -43,7 +45,8 @@ def callback(ch, method, props, body):
         print(mid_dict)
 
         # записываем файл с данными от мид
-        helper.update_file("response_from_mid_{}.json".format(props.correlation_id), body.decode(), mid_dict)
+        helper.update_file("response_from_mid_{}.json".format(props.correlation_id),
+                           body.decode(), mid_dict)
 
         ch.basic_publish(exchange='',
                          routing_key='from_mid_mvd',
@@ -51,7 +54,9 @@ def callback(ch, method, props, body):
                              correlation_id=props.correlation_id),
                          body="response_from_mid_{}.json".format(props.correlation_id))
     else:
-        message = helper.pack_to_str({'response': 'request failed, person {} is illegal immigrant'.format(props.correlation_id)})
+        message = helper.pack_to_str({
+            'response': 'request failed, person {} is '
+                        'illegal immigrant'.format(props.correlation_id)})
 
         ch.basic_publish(exchange='',
                          routing_key=props.reply_to,

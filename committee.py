@@ -64,6 +64,7 @@ def on_request(ch, method, props, body):
 def mid_request(ch, method, props, body):
     """
     callback-функция для приема ответов от мид и мвд,
+    при наличии файлов и от мид и от мвд
     отправляем запрос в министерство соцобеспечения
     """
 
@@ -91,10 +92,13 @@ def mid_request(ch, method, props, body):
 def social_request(ch, method, props, body):
     """
     callback-функция для приема ответов от министерства соцобеспечения,
-    отправляем предварительный ок человеку
+    отправляем предварительный ок человеку. response ok показывает нам,
+    что весь путь запрос прошел верно
     """
     print(body.decode())
-    response = helper.pack_to_str({'response': 'ok', 'Committee': 'Pre-OK. You need to pass exam and pay fee'})
+    response = helper.pack_to_str({'response': 'ok',
+                                   'Committee': 'Pre-OK. You need to pass exam '
+                                                'and pay fee'})
 
     ch.basic_publish(exchange='',
                      routing_key=props.reply_to,
@@ -151,11 +155,14 @@ def person_fee_request(ch, method, props, body):
 def tax_request(ch, method, props, body):
     """
     callback-функция для приема ответов от налоговой,
-    отправляем итоговый ответ человеку
+    отправляем итоговый ответ человеку. response ok показывает нам,
+    что весь путь запрос прошел верно
     """
     print(body.decode())
     tax_dict = helper.unpack_str(body.decode())
-    response = helper.pack_to_str({"Committee":"Congrats! Your taxpayer_id {}".format(tax_dict['taxpayer_id'])})
+    response = helper.pack_to_str({"response": "ok",
+                                   "Committee":"Congrats! Your taxpayer_id "
+                                               "{}".format(tax_dict['taxpayer_id'])})
     ch.basic_publish(exchange='',
                      routing_key=props.reply_to,
                      properties=pika.BasicProperties(

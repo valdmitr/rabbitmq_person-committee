@@ -69,15 +69,18 @@ class PersonRpcClient:
         """
         callback-функция для приема ответов на запрос,
         проверяем соответствие id и в response помещаем полученный body.
-        Отправляем запрос на сдачу экзаменов.
+        Если полученный response ok, oтправляем запрос на сдачу экзаменов,
+        иначе меняем флаг is_final на True
         """
         if self.person_id == props.correlation_id:
+            self.response = body.decode()
             pre_ok_dict = helper.unpack_str(body)
-            if pre_ok_dict['response'] == 'ok':
-                self.response = body.decode()
 
-                request_exams = helper.pack_to_str({"Person {}".format(
-                    props.correlation_id): "I want to pass exams", "exam_result": 80})
+            if pre_ok_dict['response'] == 'ok':
+                request_exams = helper.pack_to_str({
+                    "Person {}".format(props.correlation_id): "I want to pass exams",
+                    "exam_result": 80
+                })
 
                 ch.basic_publish(exchange='',
                                  routing_key='exams_center',
@@ -86,7 +89,6 @@ class PersonRpcClient:
                                      correlation_id=props.correlation_id),
                                  body=request_exams)
             else:
-                self.response = body.decode()
                 self.is_final = True
 
 
@@ -94,18 +96,24 @@ class PersonRpcClient:
         """
         callback-функция для приема предварительного одобрения на запрос,
         проверяем соответствие id и в response помещаем полученный ответ от
-        центра сдачи экзаменов. Создаем файл с ответом от центра экзаменов.
-        Отправляем пошлину в банк.
+        центра сдачи экзаменов. Если полученный response ok, oтправляем
+        запрос на сдачу экзаменов, создаем файл с ответом от центра
+        экзаменов и отправляем пошлину в банк. Если полученный response
+         другой - меняем флаг is_final на True
         """
         if self.person_id == props.correlation_id:
+            self.response_from_exams = body.decode()
             dict_exams_response = helper.unpack_str(body)
             if dict_exams_response['response'] == 'ok':
-                self.response_from_exams = body.decode()
 
-                with open("resp_exams_{}.json".format(props.correlation_id), "w") as write_file:
-                    write_file.write(body.decode())
+                with open("resp_exams_{}.json".format(props.correlation_id),
+                          "w") as write_file: write_file.write(body.decode())
 
-                fee_dict = {'Person {}'.format(props.correlation_id): 'I would like to pay', 'type': 'fee', 'sum': 500}
+                fee_dict = {
+                    'Person {}'.format(props.correlation_id): 'I would like to pay',
+                    'type': 'fee',
+                    'sum': 500
+                }
                 req_bank = helper.pack_to_str(fee_dict)
 
                 self.channel.basic_publish(exchange='',
@@ -116,7 +124,6 @@ class PersonRpcClient:
                                            body=req_bank)
                 self.exist_file_exams_bank(ch, props)
             else:
-                self.response_from_exams = body.decode()
                 self.is_final = True
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -124,9 +131,10 @@ class PersonRpcClient:
     def bank_request(self, ch, method, props, body):
         """
         callback-функция для приема ответов от банка,
-        проверяем соответствие id, а также проверяем какой
-        пришел ответ от банка, и затем в response помещаем полученный код
-        от банка. Создаем файл с кодом транзакции от банка и person_id.
+        проверяем соответствие id, и в response помещаем полученный
+        ответ от банка. Если полученный response ok, создаем файл
+        с кодом транзакции от банка и person_id. Если полученный
+        response другой - меняем флаг is_final на True.
         """
         if self.person_id == props.correlation_id:
             dict_bank_resp = helper.unpack_str(body)
@@ -137,13 +145,10 @@ class PersonRpcClient:
                 helper.write_file("resp_bank_{}.json".format(props.correlation_id),
                                   {'transaction_id': dict_bank_resp['transaction_id'],
                                    'person_id': props.correlation_id})
-
                 self.exist_file_exams_bank(ch, props)
             else:
                 self.response_from_bank = body.decode()
                 self.is_final = True
-
-
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -172,10 +177,13 @@ class PersonRpcClient:
 
     def final_ok(self, ch, method, props, body):
         """
-        callback-функция для приема итоговых ответов от комиссии
+        callback-функция для приема итоговых ответов от комиссии.
+        Если полученный response ok,
         """
         if self.person_id == props.correlation_id:
-            self.final_response = body
+            self.final_response = body.decode()
+
+
 
 
     def call(self, message):
@@ -200,10 +208,12 @@ class PersonRpcClient:
 
         # флаг, если мы не дождались финального ответа
         self.is_final = False
-        self.person_id = str(uuid.uuid4())
+        # self.person_id = str(uuid.uuid4())
+        # person_id для негативных test-case
         # self.person_id = 'c2772114-b159-402c-9e6c-ffdd35a7ad9e'
         # self.person_id = '8c460b99-d9a3-46bd-abb5-cd651a10310c'
         # self.person_id = '7a6099e2-bcf8-4b89-8287-9662cc8adbe9'
+        self.person_id = 'b1af25d2-dd3d-41b9-b53c-7e8cc0abc145'
         self.channel.basic_publish(exchange='',
                                    routing_key='approval',
                                    properties=pika.BasicProperties(
@@ -232,10 +242,7 @@ class PersonRpcClient:
         #     print(self.response_from_bank)
         # return self.final_response
 
-        response_list = [self.response, self.response_from_exams, self.response_from_bank, self.final_response]
-
         while not self.final_response and not self.is_final:
-        # if not all(response_list) and not self.is_final:
             self.connection.process_data_events()
         print(self.response)
         print(self.response_from_exams)

@@ -40,7 +40,10 @@ def callback(ch, method, props, body):
     принимаем сообщения от комитета, отправляем запрос
     одновременно во внутреннюю и во внешнюю базу
     """
-    response = helper.append_smth(body.decode(), {"mvd": "check this person {}".format(props.correlation_id)})
+    response = helper.append_smth(
+        body.decode(),
+        {"mvd": "check this person {}".format(props.correlation_id)}
+    )
     print(response)
 
     ch.basic_publish(exchange='fanout_internal_external',
@@ -106,7 +109,8 @@ def exist_file_in_out(ch, props):
             in_file = helper.unpack_file(read_file)
             in_file.update({'internal': 'ok', 'external': 'ok'})
 
-            helper.write_file('response_from_mvd_{}.json'.format(props.correlation_id), in_file)
+            helper.write_file('response_from_mvd_{}.json'.format(props.correlation_id),
+                              in_file)
 
         ch.basic_publish(exchange='',
                          routing_key='from_mid_mvd',

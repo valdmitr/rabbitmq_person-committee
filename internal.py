@@ -23,7 +23,7 @@ BAD_PERSON_INTERNAL = {
 def callback(ch, method, props, body):
     """
     принимаем собщение от мвд, проверяем есть ли человек во
-    внутренних базах. Если да, то кидаем отказ человеку,
+    внутренних базах. Если есть, то кидаем отказ человеку,
     если нет, отправляем ответ обратно мвд.
     """
     if props.correlation_id not in BAD_PERSON_INTERNAL:
@@ -36,7 +36,9 @@ def callback(ch, method, props, body):
                              reply_to=props.reply_to),
                          body=body.decode())
     else:
-        message = helper.pack_to_str({'response': 'request failed, person {} is criminal (internal db)'.format(props.correlation_id)})
+        message = helper.pack_to_str({
+            'response': 'request failed, person {} is criminal '
+                        '(internal db)'.format(props.correlation_id)})
 
         ch.basic_publish(exchange='',
                          routing_key=props.reply_to,
