@@ -203,6 +203,7 @@ class PersonRpcClient:
         self.person_id = str(uuid.uuid4())
         # self.person_id = 'c2772114-b159-402c-9e6c-ffdd35a7ad9e'
         # self.person_id = '8c460b99-d9a3-46bd-abb5-cd651a10310c'
+        # self.person_id = '7a6099e2-bcf8-4b89-8287-9662cc8adbe9'
         self.channel.basic_publish(exchange='',
                                    routing_key='approval',
                                    properties=pika.BasicProperties(

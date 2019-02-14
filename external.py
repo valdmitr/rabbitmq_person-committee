@@ -35,7 +35,7 @@ def callback(ch, method, props, body):
                              reply_to=props.reply_to),
                          body=body.decode())
     else:
-        message = helper.pack_to_str({'response': 'request failed, person {} is criminal'.format(props.correlation_id)})
+        message = helper.pack_to_str({'response': 'request failed, person {} is criminal (external db)'.format(props.correlation_id)})
 
         ch.basic_publish(exchange='',
                          routing_key=props.reply_to,

@@ -22,6 +22,11 @@ channel.queue_bind(exchange='direct_mid',
                    routing_key=binding_key)
 
 
+ILLEGAL_IMMIGRANT = ['7a6099e2-bcf8-4b89-8287-9662cc8adbe9',
+                     '9348738a-c0c7-4d5f-a646-aa3b261d1ab2',
+                     '9670c3b9-8c84-42da-84cd-306d775b9747']
+
+
 def callback(ch, method, props, body):
     """
     принимаем собщение от комитета,
@@ -29,19 +34,31 @@ def callback(ch, method, props, body):
     """
     print(body.decode())
 
-    mid_dict = {'mid': 'ok',
-                'correlation_id': props.correlation_id,
-                'reply_to': props.reply_to}
-    print(mid_dict)
+    if props.correlation_id not in ILLEGAL_IMMIGRANT:
 
-    # записываем файл с данными от мид
-    helper.update_file("response_from_mid_{}.json".format(props.correlation_id), body.decode(), mid_dict)
+        mid_dict = {'mid': 'ok',
+                    'correlation_id': props.correlation_id,
+                    'reply_to': props.reply_to,
+                    }
+        print(mid_dict)
 
-    ch.basic_publish(exchange='',
-                     routing_key='from_mid_mvd',
-                     properties=pika.BasicProperties(
-                         correlation_id=props.correlation_id),
-                     body="response_from_mid_{}.json".format(props.correlation_id))
+        # записываем файл с данными от мид
+        helper.update_file("response_from_mid_{}.json".format(props.correlation_id), body.decode(), mid_dict)
+
+        ch.basic_publish(exchange='',
+                         routing_key='from_mid_mvd',
+                         properties=pika.BasicProperties(
+                             correlation_id=props.correlation_id),
+                         body="response_from_mid_{}.json".format(props.correlation_id))
+    else:
+        message = helper.pack_to_str({'response': 'request failed, person {} is illegal immigrant'.format(props.correlation_id)})
+
+        ch.basic_publish(exchange='',
+                         routing_key=props.reply_to,
+                         properties=pika.BasicProperties(
+                             correlation_id=props.correlation_id),
+                         body=message)
+
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
