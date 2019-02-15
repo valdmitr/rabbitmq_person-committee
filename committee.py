@@ -61,7 +61,7 @@ def on_request(ch, method, props, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
-def mid_request(ch, method, props, body):
+def mid_mvd_request(ch, method, props, body):
     """
     callback-функция для приема ответов от мид и мвд,
     при наличии файлов и от мид и от мвд
@@ -185,7 +185,7 @@ channel.basic_qos(prefetch_count=1)
 channel.basic_consume(on_request, queue='approval')
 
 # принимаем ответы от мид и мвд
-channel.basic_consume(mid_request, queue='from_mid_mvd')
+channel.basic_consume(mid_mvd_request, queue='from_mid_mvd')
 
 # принимаем ответы от министерства соцобепечения
 channel.basic_consume(social_request, queue='from_social_sec')
