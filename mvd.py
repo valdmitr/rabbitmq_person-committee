@@ -28,6 +28,8 @@ queue_name = result.method.queue
 # binding key для приема сообщений от комитета
 binding_key = 'committee_mid_mvd'
 
+routing_key_for_mid_mvd = 'mid_mvd_committee'
+
 # создаем binding между точкой доступа direct_mid
 # и очередью для приема сообщений от комитета
 channel.queue_bind(exchange='direct_mid',
@@ -112,8 +114,8 @@ def exist_file_in_out(ch, props):
             helper.write_file('response_from_mvd_{}.json'.format(props.correlation_id),
                               in_file)
 
-        ch.basic_publish(exchange='',
-                         routing_key='from_mid_mvd',
+        ch.basic_publish(exchange='direct_mid_mvd',
+                         routing_key=routing_key_for_mid_mvd,
                          properties=pika.BasicProperties(
                              correlation_id=props.correlation_id),
                          body='response_from_mvd_{}.json'.format(props.correlation_id))

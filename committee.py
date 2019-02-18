@@ -14,17 +14,22 @@ channel.exchange_declare(exchange='direct_mid', exchange_type='direct')
 # создаем точку обмена для отправки сообщений от банка клиенту и в комитет
 channel.exchange_declare(exchange='direct_bank', exchange_type='direct')
 
+channel.exchange_declare(exchange='direct_mid_mvd', exchange_type='direct')
+
 # routing key для точки обмена direct_mid
 routing_key = 'committee_mid_mvd'
 
 # binding key для приема сообщений от банка
-binding_key = 'bank_person_committee'
+binding_key_for_bank = 'bank_person_committee'
+
+# binding key для приема сообщений от мид/мвд
+binding_key_for_mid_mvd = 'mid_mvd_committee'
 
 # создаем очередь для отправки запросов на получение вида на жительство от людей
 channel.queue_declare(queue='approval')
 
-# очередь для приема ответов от мид и мвд
-channel.queue_declare(queue='from_mid_mvd')
+# # очередь для приема ответов от мид и мвд
+# channel.queue_declare(queue='from_mid_mvd')
 
 # очередь для приема ответов от министерства соцобеспечения
 channel.queue_declare(queue='from_social_sec')
@@ -38,6 +43,10 @@ channel.queue_declare(queue='from_tax')
 # очередь для приема ответов от банка
 for_bank = channel.queue_declare(exclusive=True)
 callback_queue_bank = for_bank.method.queue
+
+# очередь для приема ответов от мид и мвд
+for_mid_mvd = channel.queue_declare(exclusive=True)
+callback_queue_mid_mvd = for_mid_mvd.method.queue
 
 
 def on_request(ch, method, props, body):
@@ -175,7 +184,12 @@ def tax_request(ch, method, props, body):
 # bind от точки обмена банка до очереди приема ответов от банка
 channel.queue_bind(exchange='direct_bank',
                    queue=callback_queue_bank,
-                   routing_key=binding_key)
+                   routing_key=binding_key_for_bank)
+
+# bind от точки обмена комитета до очереди приема ответов от мвд/мид
+channel.queue_bind(exchange='direct_mid_mvd',
+                   queue=callback_queue_mid_mvd,
+                   routing_key=binding_key_for_mid_mvd)
 
 print("[x] Waiting for requests from people")
 
@@ -185,7 +199,7 @@ channel.basic_qos(prefetch_count=1)
 channel.basic_consume(on_request, queue='approval')
 
 # принимаем ответы от мид и мвд
-channel.basic_consume(mid_mvd_request, queue='from_mid_mvd')
+channel.basic_consume(mid_mvd_request, queue=callback_queue_mid_mvd)
 
 # принимаем ответы от министерства соцобепечения
 channel.basic_consume(social_request, queue='from_social_sec')

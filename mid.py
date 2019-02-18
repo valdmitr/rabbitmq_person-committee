@@ -21,6 +21,8 @@ channel.queue_bind(exchange='direct_mid',
                    queue=queue_name,
                    routing_key=binding_key)
 
+routing_key_for_mid_mvd = 'mid_mvd_committee'
+
 
 ILLEGAL_IMMIGRANT = ['7a6099e2-bcf8-4b89-8287-9662cc8adbe9',
                      '9348738a-c0c7-4d5f-a646-aa3b261d1ab2',
@@ -48,8 +50,8 @@ def callback(ch, method, props, body):
         helper.update_file("response_from_mid_{}.json".format(props.correlation_id),
                            body.decode(), mid_dict)
 
-        ch.basic_publish(exchange='',
-                         routing_key='from_mid_mvd',
+        ch.basic_publish(exchange='direct_mid_mvd',
+                         routing_key=routing_key_for_mid_mvd,
                          properties=pika.BasicProperties(
                              correlation_id=props.correlation_id),
                          body="response_from_mid_{}.json".format(props.correlation_id))
