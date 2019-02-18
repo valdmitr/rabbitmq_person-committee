@@ -10,13 +10,28 @@ class PersonRpcClient:
     класс, в котором прописываем rpc-клиента
     """
 
-    def __init__(self):
+    def __init__(self, exam_result, sum, person_id=str(uuid.uuid4())):
         """
         создаем подключение,
         подключаемся,
         создаем очереди,
         и принимаем по ним ответ на наш запрос
         """
+
+        # результаты экзаменов
+        self.exam_result = exam_result
+
+        # размер пошлины
+        self.fee_sum = sum
+
+        # присваиваем person_id
+        # person_id для негативных test-case
+        # self.person_id = 'c2772114-b159-402c-9e6c-ffdd35a7ad9e'
+        # self.person_id = '8c460b99-d9a3-46bd-abb5-cd651a10310c'
+        # self.person_id = '7a6099e2-bcf8-4b89-8287-9662cc8adbe9'
+        # self.person_id = 'b1af25d2-dd3d-41b9-b53c-7e8cc0abc145'
+        self.person_id = person_id
+
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(
             host='localhost'))
 
@@ -79,7 +94,7 @@ class PersonRpcClient:
             if pre_ok_dict['response'] == 'ok':
                 request_exams = helper.pack_to_str({
                     "Person {}".format(props.correlation_id): "I want to pass exams",
-                    "exam_result": 80
+                    "exam_result": self.exam_result
                 })
 
                 ch.basic_publish(exchange='',
@@ -112,7 +127,7 @@ class PersonRpcClient:
                 fee_dict = {
                     'Person {}'.format(props.correlation_id): 'I would like to pay',
                     'type': 'fee',
-                    'sum': 500
+                    'sum': self.fee_sum
                 }
                 req_bank = helper.pack_to_str(fee_dict)
 
@@ -187,6 +202,8 @@ class PersonRpcClient:
 
 
     def call(self, message):
+        # global EXAM_POINTS
+
         """
         отправляем запрос на получение вида на жительства
         :param message: сообщение запроса
@@ -208,12 +225,7 @@ class PersonRpcClient:
 
         # флаг, если мы не дождались финального ответа
         self.is_final = False
-        self.person_id = str(uuid.uuid4())
-        # person_id для негативных test-case
-        # self.person_id = 'c2772114-b159-402c-9e6c-ffdd35a7ad9e'
-        # self.person_id = '8c460b99-d9a3-46bd-abb5-cd651a10310c'
-        # self.person_id = '7a6099e2-bcf8-4b89-8287-9662cc8adbe9'
-        # self.person_id = 'b1af25d2-dd3d-41b9-b53c-7e8cc0abc145'
+
         self.channel.basic_publish(exchange='',
                                    routing_key='approval',
                                    properties=pika.BasicProperties(
@@ -229,19 +241,6 @@ class PersonRpcClient:
         
         """
 
-
-        # # while self.response is None and self.is_final==False:
-        # while self.response is None:
-        #     while self.response_from_exams is None:
-        #         while self.response_from_bank is None:
-        #             while self.final_response==None and self.is_final==False:
-        #             # while self.final_response == None:
-        #                 self.connection.process_data_events()
-        #             print(self.response)
-        #         print (self.response_from_exams.decode())
-        #     print(self.response_from_bank)
-        # return self.final_response
-
         while not self.final_response and not self.is_final:
             self.connection.process_data_events()
         print(self.response)
@@ -250,7 +249,7 @@ class PersonRpcClient:
         return self.final_response
 
 
-person = PersonRpcClient()
+person = PersonRpcClient(80, 500)
 
 print('[x] I want to get a residence permit')
 response = person.call('I want to get a residence permit')
