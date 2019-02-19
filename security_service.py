@@ -19,6 +19,8 @@ channel.queue_bind(exchange='direct_mid_mvd',
                    queue=queue_mid_mvd,
                    routing_key=binding_key_for_mid_mvd)
 
+MVD_DATABASE = ['c2772114-b159-402c-9e6c-ffdd35a7ad9e', '8c460b99-d9a3-46bd-abb5-cd651a10310c']
+
 
 def security_on_request(ch, method, props, body):
     print("Security service {}".format(body.decode()))
@@ -33,15 +35,26 @@ def security_on_request(ch, method, props, body):
 
 
 def mvd_request(ch, method, props, body):
+    # для negative_test_callback из internal.py/external.py
+    # if props.correlation_id in MVD_DATABASE:
+    #     print("warning: person {} try to get a residence permit".format(props.correlation_id))
 
     if os.path.isfile('./response_from_mvd_{}.json'.format(props.correlation_id)):
         print("I caught file from mvd")
-        ch.basic_publish(exchange='',
-                         routing_key='from_mid_mvd',
-                         properties=pika.BasicProperties(
-                             correlation_id=props.correlation_id),
-                         body='response_from_mvd_{}.json'.format(
-                             props.correlation_id))
+    #     ch.basic_publish(exchange='direct_mid_mvd',
+    #                      routing_key=binding_key_for_mid_mvd,
+    #                      properties=pika.BasicProperties(
+    #                          correlation_id=props.correlation_id),
+    #                      body='response_from_mvd_{}.json'.format(
+    #                          props.correlation_id))
+    #
+    # if os.path.isfile('./response_from_mid_{}.json'.format(props.correlation_id)):
+    #     ch.basic_publish(exchange='direct_mid_mvd',
+    #                      routing_key=binding_key_for_mid_mvd,
+    #                      properties=pika.BasicProperties(
+    #                          correlation_id=props.correlation_id),
+    #                      body='response_from_mid_{}.json'.format(
+    #                          props.correlation_id))
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 

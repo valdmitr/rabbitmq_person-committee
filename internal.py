@@ -50,6 +50,19 @@ def callback(ch, method, props, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
+# def negative_test_callback(ch, method, props, body):
+#     print(body.decode())
+#
+#     ch.basic_publish(exchange='',
+#                      routing_key='internal_mvd',
+#                      properties=pika.BasicProperties(
+#                          correlation_id=props.correlation_id,
+#                          reply_to=props.reply_to),
+#                      body=body.decode())
+#     ch.basic_ack(delivery_tag=method.delivery_tag)
+
+
+
 print(' [*] Waiting for a request from mvd')
 
 # принимаем запрос от мвд
